@@ -9,37 +9,29 @@
  */
 
 import React from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  useColorScheme,
-  View,
-} from 'react-native';
+import {SafeAreaView, ScrollView} from 'react-native';
+import BleManager from 'react-native-ble-manager';
+import {Appbar} from 'react-native-paper';
+import Overview from './components/Overview';
+import Scan from './components/Scan';
+import {usePeripheral} from './context/usePeripheral';
 
-import {Colors} from 'react-native/Libraries/NewAppScreen';
+BleManager.enableBluetooth();
+
+BleManager.start({showAlert: false}).then(() => {
+  console.log('Module initialized');
+});
 
 const App = () => {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
+  const {peripheral} = usePeripheral();
 
   return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}
-        />
+    <SafeAreaView>
+      <Appbar.Header>
+        <Appbar.Content title="esp32" />
+      </Appbar.Header>
+      <ScrollView contentInsetAdjustmentBehavior="automatic">
+        {!peripheral ? <Scan /> : <Overview />}
       </ScrollView>
     </SafeAreaView>
   );
