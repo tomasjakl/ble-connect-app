@@ -1,34 +1,40 @@
 import React, {useEffect, useState} from 'react';
-import BleManager, {Peripheral} from 'react-native-ble-manager';
+import {BleError, Device} from 'react-native-ble-plx';
 import {List} from 'react-native-paper';
-import {bleManagerEmitter, usePeripheral} from '../context/usePeripheral';
+import {SERVICE_UUID} from '../constants';
+
+import {bleManager, usePeripheral} from '../context/usePeripheral';
 
 const Scan = () => {
-  const [peripherals, setPeripherals] = useState<Peripheral[]>([]);
+  const [peripherals, setPeripherals] = useState<Device[]>([]);
 
   const {connect} = usePeripheral();
 
-  const handleDiscoverPeripheral = (peripheral: Peripheral) => {
-    console.log('Got ble peripheral', peripheral);
+  const handleDiscoverPeripheral = (
+    error: BleError | null,
+    device: Device | null,
+  ) => {
+    if (error) {
+      console.error(error);
+    }
+
+    if (!device) {
+      return;
+    }
 
     setPeripherals(previous => {
-      if (previous.some(item => item.id === peripheral.id)) {
+      if (previous.some(item => item.id === device.id)) {
         return previous;
       }
-      return [...previous, peripheral];
+      return [...previous, device];
     });
   };
 
   useEffect(() => {
-    const discoverEvent = bleManagerEmitter.addListener(
-      'BleManagerDiscoverPeripheral',
-      handleDiscoverPeripheral,
-    );
-
-    BleManager.scan([], 9, true);
+    bleManager.startDeviceScan([SERVICE_UUID], null, handleDiscoverPeripheral);
 
     return () => {
-      discoverEvent.remove();
+      bleManager.stopDeviceScan();
     };
   }, []);
 

@@ -10,17 +10,10 @@
 
 import React from 'react';
 import {SafeAreaView, ScrollView} from 'react-native';
-import BleManager from 'react-native-ble-manager';
 import {Appbar} from 'react-native-paper';
 import Overview from './components/Overview';
 import Scan from './components/Scan';
 import {usePeripheral} from './context/usePeripheral';
-
-BleManager.enableBluetooth();
-
-BleManager.start({showAlert: false}).then(() => {
-  console.log('Module initialized');
-});
 
 const App = () => {
   const {peripheral} = usePeripheral();

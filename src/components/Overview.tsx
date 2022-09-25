@@ -1,40 +1,38 @@
-import React, {useState} from 'react';
-import {Button} from 'react-native-paper';
+import React, {useEffect, useState} from 'react';
+import {Characteristic as ICharacteristic} from 'react-native-ble-plx';
 
-import BleManager from 'react-native-ble-manager';
 import {usePeripheral} from '../context/usePeripheral';
 import {SERVICE_UUID} from '../constants';
 import Characteristic from './Characteristic';
 
 const Overview = () => {
-  const [characteristics, setCharacteristics] = useState<
-    BleManager.Characteristic[]
-  >([]);
+  const [characteristics, setCharacteristics] = useState<ICharacteristic[]>([]);
 
   const {peripheral} = usePeripheral();
 
-  const getServices = async () => {
-    if (!peripheral) {
-      return;
-    }
+  useEffect(() => {
+    const getServices = async () => {
+      if (!peripheral) {
+        return;
+      }
 
-    const services = await BleManager.retrieveServices(peripheral.id);
-    const newCharacteristics = services.characteristics?.filter(
-      c => c.service === SERVICE_UUID || true,
-    );
+      const newCharacteristics = await peripheral.characteristicsForService(
+        SERVICE_UUID,
+      );
 
-    if (newCharacteristics) {
-      setCharacteristics(newCharacteristics);
-    }
+      if (newCharacteristics) {
+        setCharacteristics(newCharacteristics);
+      }
+    };
 
-    console.log(JSON.stringify(newCharacteristics));
-  };
+    getServices();
+  }, [peripheral]);
+
   return (
     <>
-      <Button onPress={getServices}>Get services</Button>
       {characteristics.map(characteristic => (
         <Characteristic
-          key={characteristic.characteristic}
+          key={characteristic.id}
           characteristic={characteristic}
         />
       ))}

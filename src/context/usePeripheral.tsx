@@ -7,16 +7,14 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import {Alert, NativeEventEmitter, NativeModules} from 'react-native';
-import BleManager, {Peripheral} from 'react-native-ble-manager';
+import {Alert} from 'react-native';
+import {BleManager, Device} from 'react-native-ble-plx';
 
-export const bleManagerEmitter = new NativeEventEmitter(
-  NativeModules.BleManager,
-);
+export const bleManager = new BleManager();
 
 interface IPeripheralContext {
-  connect: (p: Peripheral) => void;
-  peripheral: Peripheral | null;
+  connect: (p: Device) => void;
+  peripheral: Device | null;
 }
 
 const PeripheralContext = createContext<IPeripheralContext>({
@@ -27,23 +25,21 @@ const PeripheralContext = createContext<IPeripheralContext>({
 export const PeripheralProvider = (props: PropsWithChildren<{}>) => {
   const {children} = props;
 
-  const [peripheral, setPeripheral] = useState<Peripheral | null>(null);
+  const [peripheral, setPeripheral] = useState<Device | null>(null);
 
   useEffect(() => {
-    const disconnectEvent = bleManagerEmitter.addListener(
-      'BleManagerDisconnectPeripheral',
-      () => setPeripheral(null),
-    );
+    if (!peripheral) {
+      return;
+    }
 
-    return () => {
-      disconnectEvent.remove();
-    };
-  }, []);
+    bleManager.onDeviceDisconnected(peripheral.id, () => setPeripheral(null));
+  }, [peripheral]);
 
   const connect = useCallback(
-    async (p: Peripheral) => {
+    async (p: Device) => {
       try {
-        await BleManager.connect(p.id);
+        await p.connect();
+        await p.discoverAllServicesAndCharacteristics();
         setPeripheral(p);
       } catch (e) {
         Alert.alert('Failed to connect');
