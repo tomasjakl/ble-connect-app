@@ -9,7 +9,6 @@ import {
   TextInput,
 } from 'react-native-paper';
 import {
-  BleError,
   Characteristic as ICharacteristic,
   Subscription,
 } from 'react-native-ble-plx';
@@ -17,8 +16,8 @@ import {Buffer} from 'buffer';
 
 import {usePeripheral} from '../context/usePeripheral';
 import {
-  DESCRIPTION_DESCRIPTOR_UUID,
-  PRESENTATION_DESCRIPTOR_UUID,
+  GATT_DESCRIPTION_DESCRIPTOR_UUID,
+  GATT_PRESENTATION_DESCRIPTOR_UUID,
 } from '../constants';
 import {Format} from '../enums';
 import {StyleProp, TextStyle} from 'react-native';
@@ -47,6 +46,7 @@ const Characteristic = (props: CharacteristicProps) => {
   const showDialog = () => {
     setIsDialogVisible(true);
   };
+
   const hideDialog = () => setIsDialogVisible(false);
 
   const getValue = (
@@ -115,46 +115,6 @@ const Characteristic = (props: CharacteristicProps) => {
     }
   };
 
-  useEffect(() => {
-    (async () => {
-      let descriptor = (await characteristic.descriptors()).find(
-        d => d.uuid === DESCRIPTION_DESCRIPTOR_UUID,
-      );
-
-      if (!descriptor) {
-        return;
-      }
-
-      descriptor = await descriptor.read();
-
-      if (!descriptor.value) {
-        return;
-      }
-
-      setDescription(Buffer.from(descriptor.value, 'base64').toString('utf8'));
-    })();
-
-    (async () => {
-      let descriptor = (await characteristic.descriptors()).find(
-        d => d.uuid === PRESENTATION_DESCRIPTOR_UUID,
-      );
-
-      if (!descriptor) {
-        return;
-      }
-
-      descriptor = await descriptor.read();
-
-      if (!descriptor.value) {
-        return;
-      }
-
-      const buffer = Buffer.from(descriptor.value, 'base64');
-      setType(buffer.readInt8(0));
-      setExponent(buffer.readInt8(1));
-    })();
-  }, [characteristic, setDescription]);
-
   const read = async () => {
     if (!peripheral) {
       return;
@@ -178,22 +138,19 @@ const Characteristic = (props: CharacteristicProps) => {
       return;
     }
 
-    const callback = (
-      _error: BleError | null,
-      updatedCharacteristic: ICharacteristic | null,
-    ) => {
-      if (!updatedCharacteristic || updatedCharacteristic.value === null) {
-        return;
-      }
-
-      setValue(getValue(updatedCharacteristic.value));
-    };
-
     if (subscription) {
       subscription.remove();
       setSubscription(undefined);
     } else {
-      setSubscription(characteristic.monitor(callback));
+      setSubscription(
+        characteristic.monitor((_error, updatedCharacteristic) => {
+          if (!updatedCharacteristic || updatedCharacteristic.value === null) {
+            return;
+          }
+
+          setValue(getValue(updatedCharacteristic.value));
+        }),
+      );
     }
   };
 
@@ -203,6 +160,29 @@ const Characteristic = (props: CharacteristicProps) => {
       color: value ? '#50de1d' : '#fc3112',
     }),
   };
+
+  useEffect(() => {
+    (async () => {
+      let descriptionDescriptor = await characteristic.readDescriptor(
+        GATT_DESCRIPTION_DESCRIPTOR_UUID,
+      );
+
+      if (descriptionDescriptor.value !== null) {
+        setDescription(
+          Buffer.from(descriptionDescriptor.value, 'base64').toString('utf8'),
+        );
+      }
+      let presentationDescriptor = await characteristic.readDescriptor(
+        GATT_PRESENTATION_DESCRIPTOR_UUID,
+      );
+
+      if (presentationDescriptor.value !== null) {
+        const buffer = Buffer.from(presentationDescriptor.value, 'base64');
+        setType(buffer.readInt8(0));
+        setExponent(buffer.readInt8(1));
+      }
+    })();
+  }, [characteristic]);
 
   return (
     <>

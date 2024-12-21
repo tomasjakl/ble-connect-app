@@ -1,7 +1,7 @@
 import React, {useEffect, useState} from 'react';
 import {BleError, Device} from 'react-native-ble-plx';
 import {List} from 'react-native-paper';
-import {SERVICE_UUID} from '../constants';
+import {ESP32_SERVICE_UUID} from '../constants';
 
 import {bleManager, usePeripheral} from '../context/usePeripheral';
 
@@ -31,7 +31,11 @@ const Scan = () => {
   };
 
   useEffect(() => {
-    bleManager.startDeviceScan([SERVICE_UUID], null, handleDiscoverPeripheral);
+    bleManager.startDeviceScan(
+      [ESP32_SERVICE_UUID],
+      null,
+      handleDiscoverPeripheral,
+    );
 
     return () => {
       bleManager.stopDeviceScan();

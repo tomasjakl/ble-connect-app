@@ -24,7 +24,7 @@ const App = () => {
         <Appbar.Content title="esp32" />
       </Appbar.Header>
       <ScrollView contentInsetAdjustmentBehavior="automatic">
-        {!peripheral ? <Scan /> : <Overview />}
+        {peripheral ? <Overview /> : <Scan />}
       </ScrollView>
     </SafeAreaView>
   );

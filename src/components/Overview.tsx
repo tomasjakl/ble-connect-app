@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Characteristic as ICharacteristic} from 'react-native-ble-plx';
 
 import {usePeripheral} from '../context/usePeripheral';
-import {SERVICE_UUID} from '../constants';
+import {ESP32_SERVICE_UUID} from '../constants';
 import Characteristic from './Characteristic';
 
 const Overview = () => {
@@ -11,21 +11,19 @@ const Overview = () => {
   const {peripheral} = usePeripheral();
 
   useEffect(() => {
-    const getServices = async () => {
+    (async () => {
       if (!peripheral) {
         return;
       }
 
       const newCharacteristics = await peripheral.characteristicsForService(
-        SERVICE_UUID,
+        ESP32_SERVICE_UUID,
       );
 
       if (newCharacteristics) {
         setCharacteristics(newCharacteristics);
       }
-    };
-
-    getServices();
+    })();
   }, [peripheral]);
 
   return (
