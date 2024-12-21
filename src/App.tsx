@@ -21,6 +21,9 @@ const App = () => {
   return (
     <SafeAreaView>
       <Appbar.Header>
+        {!!peripheral && (
+          <Appbar.BackAction onPress={() => peripheral.cancelConnection()} />
+        )}
         <Appbar.Content title="esp32" />
       </Appbar.Header>
       <ScrollView contentInsetAdjustmentBehavior="automatic">
