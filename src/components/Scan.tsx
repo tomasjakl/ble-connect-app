@@ -1,5 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {BleError, Device} from 'react-native-ble-plx';
+import {BleError, Device, ScanMode} from 'react-native-ble-plx';
 import {List} from 'react-native-paper';
 import {ESP32_SERVICE_UUID} from '../constants';
 
@@ -23,17 +23,28 @@ const Scan = () => {
     }
 
     setPeripherals(previous => {
-      if (previous.some(item => item.id === device.id)) {
+      const existingIndex = previous.findIndex(item => item.id === device.id);
+
+      if (existingIndex < 0) {
+        return [...previous, device];
+      }
+
+      const existingDevice = previous[existingIndex];
+
+      if (existingDevice.localName === device.localName) {
         return previous;
       }
-      return [...previous, device];
+
+      const updated = [...previous];
+      updated[existingIndex] = device;
+      return updated;
     });
   };
 
   useEffect(() => {
     bleManager.startDeviceScan(
       [ESP32_SERVICE_UUID],
-      null,
+      {scanMode: ScanMode.Balanced},
       handleDiscoverPeripheral,
     );
 
@@ -47,7 +58,7 @@ const Scan = () => {
       {peripherals.map(peripheral => (
         <List.Item
           key={peripheral.id}
-          title={peripheral.name ?? '-'}
+          title={peripheral.localName ?? '-'}
           description={peripheral.id}
           onPress={() => connect(peripheral)}
         />
