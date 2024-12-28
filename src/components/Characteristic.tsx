@@ -1,4 +1,4 @@
-import React, {useEffect, useMemo, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {
   Button,
   Dialog,
@@ -8,38 +8,35 @@ import {
   Switch,
   TextInput,
 } from 'react-native-paper';
-import {
-  Characteristic as ICharacteristic,
-  Subscription,
-} from 'react-native-ble-plx';
+import {Characteristic as ICharacteristic} from 'react-native-ble-plx';
 import {Buffer} from 'buffer';
 
-import {usePeripheral} from '../context/usePeripheral';
 import {
   GATT_DESCRIPTION_DESCRIPTOR_UUID,
   GATT_PRESENTATION_DESCRIPTOR_UUID,
 } from '../constants';
-import {Format} from '../enums';
+import {GattFormat} from '../enums';
 import {StyleProp, TextStyle} from 'react-native';
+import {convertFromGatt} from '../utils/ble';
 
 interface CharacteristicProps {
   characteristic: ICharacteristic;
 }
 
+type Value = string | number | boolean | undefined;
+
 const Characteristic = (props: CharacteristicProps) => {
   const {characteristic} = props;
-  const [value, setValue] = useState<any>();
+  const [value, setValue] = useState<Value>();
 
-  const {peripheral} = usePeripheral();
   const [description, setDescription] = useState<string>();
-  const [subscription, setSubscription] = useState<Subscription>();
-  const [exponent, setExponent] = useState<number>(0);
-  const [type, setType] = useState<number>(0);
+  const exponent = useRef<number>(0);
+  const format = useRef<GattFormat>(GattFormat.utf8);
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
   const [editedValue, setEditedValue] = useState<string>();
 
   const valueString = useMemo(
-    () => value !== undefined && value.toString(),
+    () => (value !== undefined ? value.toString() : undefined),
     [value],
   );
 
@@ -49,27 +46,6 @@ const Characteristic = (props: CharacteristicProps) => {
 
   const hideDialog = () => setIsDialogVisible(false);
 
-  const getValue = (
-    newValue: string,
-  ): string | number | boolean | undefined => {
-    switch (type) {
-      case Format.sInt16:
-        return +(
-          Buffer.from(newValue, 'base64').readInt16LE(0) *
-          10 ** exponent
-        ).toFixed(Math.abs(exponent));
-      case Format.uInt16:
-        return +(
-          Buffer.from(newValue, 'base64').readUInt16LE(0) *
-          10 ** exponent
-        ).toFixed(Math.abs(exponent));
-      case Format.boolean:
-        return !!Buffer.from(newValue, 'base64').readInt8(0);
-      case Format.utf8:
-        return Buffer.from(newValue, 'base64').toString('utf8');
-    }
-  };
-
   const saveValue = () => {
     if (editedValue === undefined) {
       return;
@@ -77,31 +53,31 @@ const Characteristic = (props: CharacteristicProps) => {
 
     let newValue: string | undefined;
     let buffer: ArrayBuffer;
-    switch (type) {
-      case Format.sInt16:
+    switch (format.current) {
+      case GattFormat.sInt16:
         buffer = new ArrayBuffer(2);
         new DataView(buffer).setInt16(
           0,
-          Math.round(Number(editedValue) * 10 ** -exponent),
+          Math.round(Number(editedValue) * 10 ** -exponent.current),
         );
         newValue = Buffer.from(new Uint8Array(buffer).reverse()).toString(
           'base64',
         );
         break;
-      case Format.uInt16:
+      case GattFormat.uInt16:
         buffer = new ArrayBuffer(2);
         new DataView(buffer).setUint16(
           0,
-          Math.round(Number(editedValue) * 10 ** -exponent),
+          Math.round(Number(editedValue) * 10 ** -exponent.current),
         );
         newValue = Buffer.from(new Uint8Array(buffer).reverse()).toString(
           'base64',
         );
         break;
-      case Format.boolean:
+      case GattFormat.boolean:
         newValue = editedValue === 'true' ? 'AQ==' : 'AA==';
         break;
-      case Format.utf8:
+      case GattFormat.utf8:
         newValue = Buffer.from(editedValue).toString('base64');
     }
 
@@ -116,47 +92,18 @@ const Characteristic = (props: CharacteristicProps) => {
   };
 
   const read = async () => {
-    if (!peripheral) {
-      return;
-    }
-
     const {value: newValue} = await characteristic.read();
 
     if (newValue === null) {
       return;
     }
 
-    setValue(getValue(newValue));
-
-    if (characteristic.isNotifiable && !subscription) {
-      toggleSubscription();
-    }
-  };
-
-  const toggleSubscription = async () => {
-    if (!characteristic.isNotifiable) {
-      return;
-    }
-
-    if (subscription) {
-      subscription.remove();
-      setSubscription(undefined);
-    } else {
-      setSubscription(
-        characteristic.monitor((_error, updatedCharacteristic) => {
-          if (!updatedCharacteristic || updatedCharacteristic.value === null) {
-            return;
-          }
-
-          setValue(getValue(updatedCharacteristic.value));
-        }),
-      );
-    }
+    setValue(convertFromGatt(newValue, format.current, exponent.current));
   };
 
   const descriptionStyle: StyleProp<TextStyle> = {
     fontWeight: 'bold',
-    ...(type === Format.boolean && {
+    ...(format.current === GattFormat.boolean && {
       color: value ? '#50de1d' : '#fc3112',
     }),
   };
@@ -178,8 +125,35 @@ const Characteristic = (props: CharacteristicProps) => {
 
       if (presentationDescriptor.value !== null) {
         const buffer = Buffer.from(presentationDescriptor.value, 'base64');
-        setType(buffer.readInt8(0));
-        setExponent(buffer.readInt8(1));
+
+        format.current = buffer.readInt8(0);
+        exponent.current = buffer.readInt8(1);
+
+        characteristic.isNotifiable &&
+          characteristic.monitor((_error, updatedCharacteristic) => {
+            if (
+              !updatedCharacteristic ||
+              updatedCharacteristic.value === null
+            ) {
+              return;
+            }
+
+            setValue(
+              convertFromGatt(
+                updatedCharacteristic.value,
+                format.current,
+                exponent.current,
+              ),
+            );
+          });
+
+        const {value: newValue} = await characteristic.read();
+
+        if (newValue === null) {
+          return;
+        }
+
+        setValue(convertFromGatt(newValue, format.current, exponent.current));
       }
     })();
   }, [characteristic]);
@@ -191,15 +165,9 @@ const Characteristic = (props: CharacteristicProps) => {
         description={valueString}
         descriptionStyle={descriptionStyle}
         onPress={read}
-        onLongPress={toggleSubscription}
         left={
           characteristic.isNotifiable
-            ? p => (
-                <List.Icon
-                  {...p}
-                  icon={subscription ? 'check-circle' : 'circle-outline'}
-                />
-              )
+            ? p => <List.Icon {...p} icon={'circle-outline'} />
             : undefined
         }
         right={
@@ -213,26 +181,28 @@ const Characteristic = (props: CharacteristicProps) => {
         <Dialog visible={isDialogVisible} onDismiss={hideDialog}>
           <Dialog.Title>{description}</Dialog.Title>
           <Dialog.Content>
-            {[Format.sInt16, Format.uInt16].includes(type) && (
+            {format.current !== undefined &&
+              [GattFormat.sInt16, GattFormat.uInt16].includes(
+                format.current,
+              ) && (
+                <TextInput
+                  mode="outlined"
+                  value={editedValue === undefined ? valueString : editedValue}
+                  onChangeText={v => setEditedValue(v)}
+                  keyboardType="decimal-pad"
+                />
+              )}
+            {format.current === GattFormat.utf8 && (
               <TextInput
                 mode="outlined"
                 value={editedValue === undefined ? valueString : editedValue}
                 onChangeText={v => setEditedValue(v)}
-                keyboardType="decimal-pad"
-                // right={<TextInput.Affix text="/100" />}
               />
             )}
-            {type === Format.utf8 && (
-              <TextInput
-                mode="outlined"
-                value={editedValue === undefined ? valueString : editedValue}
-                onChangeText={v => setEditedValue(v)}
-              />
-            )}
-            {type === Format.boolean && (
+            {format.current === GattFormat.boolean && (
               <Switch
                 value={
-                  editedValue === undefined ? value : editedValue === 'true'
+                  editedValue === undefined ? !!value : editedValue === 'true'
                 }
                 onValueChange={v => setEditedValue(v.toString())}
               />

@@ -1,4 +1,4 @@
-export enum Format {
+export enum GattFormat {
   boolean = 1,
   uInt2 = 2,
   uInt4 = 3,
