@@ -1,13 +1,6 @@
 import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {
-  Button,
-  Dialog,
-  IconButton,
-  List,
-  Portal,
-  Switch,
-  TextInput,
-} from 'react-native-paper';
+import EditDialog from './EditDialog';
+import {IconButton, List, Portal} from 'react-native-paper';
 import {Characteristic as ICharacteristic} from 'react-native-ble-plx';
 import {Buffer} from 'buffer';
 
@@ -17,23 +10,21 @@ import {
 } from '../constants';
 import {GattFormat} from '../enums';
 import {StyleProp, TextStyle} from 'react-native';
-import {convertFromGatt} from '../utils/ble';
+import {convertFromGatt, convertToGatt} from '../utils/ble';
+import {GattValue} from '../types/ble';
 
-interface CharacteristicProps {
+interface Props {
   characteristic: ICharacteristic;
 }
 
-type Value = string | number | boolean | undefined;
-
-const Characteristic = (props: CharacteristicProps) => {
+const Characteristic = (props: Props) => {
   const {characteristic} = props;
-  const [value, setValue] = useState<Value>();
+  const [value, setValue] = useState<GattValue>();
 
   const [description, setDescription] = useState<string>();
   const exponent = useRef<number>(0);
   const format = useRef<GattFormat>(GattFormat.utf8);
   const [isDialogVisible, setIsDialogVisible] = useState<boolean>(false);
-  const [editedValue, setEditedValue] = useState<string>();
 
   const valueString = useMemo(
     () => (value !== undefined ? value.toString() : undefined),
@@ -46,49 +37,18 @@ const Characteristic = (props: CharacteristicProps) => {
 
   const hideDialog = () => setIsDialogVisible(false);
 
-  const saveValue = () => {
-    if (editedValue === undefined) {
-      return;
-    }
+  const saveValue = async (newValue: GattValue) => {
+    const convertedValue = convertToGatt(
+      newValue,
+      format.current,
+      exponent.current,
+    );
 
-    let newValue: string | undefined;
-    let buffer: ArrayBuffer;
-    switch (format.current) {
-      case GattFormat.sInt16:
-        buffer = new ArrayBuffer(2);
-        new DataView(buffer).setInt16(
-          0,
-          Math.round(Number(editedValue) * 10 ** -exponent.current),
-        );
-        newValue = Buffer.from(new Uint8Array(buffer).reverse()).toString(
-          'base64',
-        );
-        break;
-      case GattFormat.uInt16:
-        buffer = new ArrayBuffer(2);
-        new DataView(buffer).setUint16(
-          0,
-          Math.round(Number(editedValue) * 10 ** -exponent.current),
-        );
-        newValue = Buffer.from(new Uint8Array(buffer).reverse()).toString(
-          'base64',
-        );
-        break;
-      case GattFormat.boolean:
-        newValue = editedValue === 'true' ? 'AQ==' : 'AA==';
-        break;
-      case GattFormat.utf8:
-        newValue = Buffer.from(editedValue).toString('base64');
-    }
+    characteristic.isWritableWithResponse
+      ? await characteristic.writeWithResponse(convertedValue)
+      : await characteristic.writeWithoutResponse(convertedValue);
 
-    if (newValue !== undefined) {
-      characteristic.isWritableWithResponse
-        ? characteristic.writeWithResponse(newValue)
-        : characteristic.writeWithoutResponse(newValue);
-
-      hideDialog();
-      setEditedValue(undefined);
-    }
+    hideDialog();
   };
 
   const read = async () => {
@@ -178,43 +138,13 @@ const Characteristic = (props: CharacteristicProps) => {
         }
       />
       <Portal>
-        <Dialog visible={isDialogVisible} onDismiss={hideDialog}>
-          <Dialog.Title>{description}</Dialog.Title>
-          <Dialog.Content>
-            {format.current !== undefined &&
-              [GattFormat.sInt16, GattFormat.uInt16].includes(
-                format.current,
-              ) && (
-                <TextInput
-                  mode="outlined"
-                  value={editedValue === undefined ? valueString : editedValue}
-                  onChangeText={v => setEditedValue(v)}
-                  keyboardType="decimal-pad"
-                />
-              )}
-            {format.current === GattFormat.utf8 && (
-              <TextInput
-                mode="outlined"
-                value={editedValue === undefined ? valueString : editedValue}
-                onChangeText={v => setEditedValue(v)}
-              />
-            )}
-            {format.current === GattFormat.boolean && (
-              <Switch
-                value={
-                  editedValue === undefined ? !!value : editedValue === 'true'
-                }
-                onValueChange={v => setEditedValue(v.toString())}
-              />
-            )}
-          </Dialog.Content>
-          <Dialog.Actions>
-            {editedValue !== undefined && (
-              <Button onPress={saveValue}>Save</Button>
-            )}
-            <Button onPress={hideDialog}>Close</Button>
-          </Dialog.Actions>
-        </Dialog>
+        <EditDialog
+          visible={isDialogVisible}
+          onDismiss={hideDialog}
+          description={description}
+          value={value}
+          onSave={saveValue}
+        />
       </Portal>
     </>
   );

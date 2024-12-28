@@ -2,24 +2,55 @@ import {Buffer} from 'buffer';
 import {GattFormat} from '../enums';
 
 export const convertFromGatt = (
-  newValue: string,
+  value: string,
   format: GattFormat,
-  exponent: number = 1,
+  exponent: number = -1,
 ) => {
+  const buffer = Buffer.from(value, 'base64');
+
   switch (format) {
     case GattFormat.sInt16:
-      return +(
-        Buffer.from(newValue, 'base64').readInt16LE(0) *
-        10 ** exponent
-      ).toFixed(Math.abs(exponent));
+      return +(buffer.readInt16LE(0) * 10 ** exponent).toFixed(
+        Math.abs(exponent),
+      );
     case GattFormat.uInt16:
-      return +(
-        Buffer.from(newValue, 'base64').readUInt16LE(0) *
-        10 ** exponent
-      ).toFixed(Math.abs(exponent));
+      return +(buffer.readUInt16LE(0) * 10 ** exponent).toFixed(
+        Math.abs(exponent),
+      );
     case GattFormat.boolean:
-      return !!Buffer.from(newValue, 'base64').readInt8(0);
+      return !!buffer.readInt8(0);
     case GattFormat.utf8:
-      return Buffer.from(newValue, 'base64').toString('utf8');
+      return buffer.toString('utf8');
+    default:
+      throw new Error(`Unsupported format: ${format}`);
   }
+};
+
+export const convertToGatt = (
+  value: number | string | boolean,
+  format: GattFormat,
+  exponent: number = -1,
+) => {
+  let buffer: Buffer;
+
+  switch (format) {
+    case GattFormat.sInt16:
+      buffer = Buffer.alloc(2);
+      buffer.writeInt16LE(Math.round(Number(value) * 10 ** -exponent));
+      return buffer.toString('base64');
+    case GattFormat.uInt16:
+      buffer = Buffer.alloc(2);
+      buffer.writeUInt16LE(Math.round(Number(value) * 10 ** -exponent));
+      return buffer.toString('base64');
+    case GattFormat.boolean:
+      buffer = Buffer.from([value ? 1 : 0]);
+      break;
+    case GattFormat.utf8:
+      buffer = Buffer.from(value.toString());
+      break;
+    default:
+      throw new Error(`Unsupported format: ${format}`);
+  }
+
+  return buffer.toString('base64');
 };
