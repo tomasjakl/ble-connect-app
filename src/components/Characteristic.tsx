@@ -49,6 +49,8 @@ const Characteristic = (props: Props) => {
       : await characteristic.writeWithoutResponse(convertedValue);
 
     hideDialog();
+
+    read();
   };
 
   const read = async () => {
