@@ -22,7 +22,7 @@ const PeripheralContext = createContext<IPeripheralContext>({
   peripheral: null,
 });
 
-export const PeripheralProvider = (props: PropsWithChildren<{}>) => {
+export const PeripheralProvider = (props: PropsWithChildren) => {
   const {children} = props;
 
   const [peripheral, setPeripheral] = useState<Device | null>(null);
