@@ -19,8 +19,8 @@ interface Props {
 
 const Characteristic = (props: Props) => {
   const {characteristic} = props;
-  const [value, setValue] = useState<GattValue>();
 
+  const [value, setValue] = useState<GattValue>();
   const [description, setDescription] = useState<string>();
   const exponent = useRef<number>(0);
   const format = useRef<GattFormat>(GattFormat.utf8);
@@ -71,8 +71,8 @@ const Characteristic = (props: Props) => {
   };
 
   useEffect(() => {
-    (async () => {
-      let descriptionDescriptor = await characteristic.readDescriptor(
+    const readDescription = async () => {
+      const descriptionDescriptor = await characteristic.readDescriptor(
         GATT_DESCRIPTION_DESCRIPTOR_UUID,
       );
 
@@ -81,7 +81,10 @@ const Characteristic = (props: Props) => {
           Buffer.from(descriptionDescriptor.value, 'base64').toString('utf8'),
         );
       }
-      let presentationDescriptor = await characteristic.readDescriptor(
+    };
+
+    const readPresentation = async () => {
+      const presentationDescriptor = await characteristic.readDescriptor(
         GATT_PRESENTATION_DESCRIPTOR_UUID,
       );
 
@@ -117,6 +120,14 @@ const Characteristic = (props: Props) => {
 
         setValue(convertFromGatt(newValue, format.current, exponent.current));
       }
+    };
+
+    (async () => {
+      try {
+        await Promise.all([readDescription(), readPresentation()]);
+      } catch (error) {
+        console.warn(error);
+      }
     })();
   }, [characteristic]);
 
@@ -129,13 +140,20 @@ const Characteristic = (props: Props) => {
         onPress={read}
         left={
           characteristic.isNotifiable
-            ? p => <List.Icon {...p} icon={'circle-outline'} />
+            ? p => <List.Icon {...p} icon="circle-outline" />
             : undefined
         }
         right={
           characteristic.isWritableWithResponse ||
           characteristic.isWritableWithoutResponse
-            ? p => <IconButton {...p} icon="pencil" onPress={showDialog} />
+            ? p => (
+                <IconButton
+                  {...p}
+                  icon="pencil"
+                  onPress={showDialog}
+                  aria-label="Edit"
+                />
+              )
             : undefined
         }
       />

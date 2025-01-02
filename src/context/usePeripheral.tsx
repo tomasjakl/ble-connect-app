@@ -13,12 +13,12 @@ import {BleManager, Device} from 'react-native-ble-plx';
 export const bleManager = new BleManager();
 
 interface IPeripheralContext {
-  connect: (p: Device) => void;
+  connect: (p: Device) => Promise<void>;
   peripheral: Device | null;
 }
 
 const PeripheralContext = createContext<IPeripheralContext>({
-  connect: () => undefined,
+  connect: async () => undefined,
   peripheral: null,
 });
 
