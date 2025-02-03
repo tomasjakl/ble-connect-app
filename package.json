@@ -1,5 +1,5 @@
 {
-  "name": "esp32-ble-app",
+  "name": "ble-connect",
   "version": "0.0.1",
   "license": "ISC",
   "private": true,

@@ -14,7 +14,7 @@ if linkage != nil
   use_frameworks! :linkage => linkage.to_sym
 end
 
-target 'esp32' do
+target 'ble-connect' do
   config = use_native_modules!
 
   use_react_native!(
@@ -23,7 +23,7 @@ target 'esp32' do
     :app_path => "#{Pod::Config.instance.installation_root}/.."
   )
 
-  target 'esp32Tests' do
+  target 'ble-connectTests' do
     inherit! :complete
     # Pods for testing
   end

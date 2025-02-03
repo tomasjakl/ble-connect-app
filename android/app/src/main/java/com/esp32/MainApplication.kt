@@ -1,4 +1,4 @@
-package com.tomasjakl.esp32
+package com.tomasjakl.bleconnect
 
 import android.app.Application
 import com.facebook.react.PackageList
