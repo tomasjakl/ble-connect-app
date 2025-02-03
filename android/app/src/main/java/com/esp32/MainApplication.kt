@@ -1,4 +1,4 @@
-package com.esp32
+package com.tomasjakl.esp32
 
 import android.app.Application
 import com.facebook.react.PackageList

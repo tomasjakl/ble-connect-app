@@ -1,4 +1,4 @@
-package com.esp32
+package com.tomasjakl.esp32
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

@@ -1,6 +1,7 @@
 {
-  "name": "esp32",
+  "name": "esp32-ble-app",
   "version": "0.0.1",
+  "license": "ISC",
   "private": true,
   "scripts": {
     "android": "react-native run-android",
