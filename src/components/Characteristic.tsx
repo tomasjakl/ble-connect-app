@@ -10,7 +10,7 @@ import {
 } from '../constants';
 import {GattFormat} from '../enums';
 import {StyleProp, TextStyle} from 'react-native';
-import {convertFromGatt, convertToGatt} from '../utils/ble';
+import {parseGattValue, formatGattValue} from '../utils/ble';
 import {GattValue} from '../types/ble';
 
 interface Props {
@@ -38,7 +38,7 @@ const Characteristic = (props: Props) => {
   const hideDialog = () => setIsDialogVisible(false);
 
   const saveValue = async (newValue: GattValue) => {
-    const convertedValue = convertToGatt(
+    const convertedValue = formatGattValue(
       newValue,
       format.current,
       exponent.current,
@@ -60,7 +60,7 @@ const Characteristic = (props: Props) => {
       return;
     }
 
-    setValue(convertFromGatt(newValue, format.current, exponent.current));
+    setValue(parseGattValue(newValue, format.current, exponent.current));
   };
 
   const descriptionStyle: StyleProp<TextStyle> = {
@@ -104,7 +104,7 @@ const Characteristic = (props: Props) => {
             }
 
             setValue(
-              convertFromGatt(
+              parseGattValue(
                 updatedCharacteristic.value,
                 format.current,
                 exponent.current,
@@ -118,7 +118,7 @@ const Characteristic = (props: Props) => {
           return;
         }
 
-        setValue(convertFromGatt(newValue, format.current, exponent.current));
+        setValue(parseGattValue(newValue, format.current, exponent.current));
       }
     };
 

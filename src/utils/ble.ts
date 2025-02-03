@@ -1,7 +1,7 @@
 import {Buffer} from 'buffer';
 import {GattFormat} from '../enums';
 
-export const convertFromGatt = (
+export const parseGattValue = (
   value: string,
   format: GattFormat,
   exponent: number = -1,
@@ -26,7 +26,7 @@ export const convertFromGatt = (
   }
 };
 
-export const convertToGatt = (
+export const formatGattValue = (
   value: number | string | boolean,
   format: GattFormat,
   exponent: number = -1,
